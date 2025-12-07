@@ -21,7 +21,6 @@ inputs:
     description: 'Directory to store state and svg (e.g. .github/gitgotchi)'
     required: false
     default: '.github/gitgotchi'
-    default: 'GitGotchi'
 
 runs:
   using: 'node20'
