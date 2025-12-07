@@ -32,9 +32,17 @@ export class GameEngine {
       // Streak Logic: Sync with Real GitHub Streak
       next.streak = contributions.streak;
 
-      // XP Gain: +50 XP per PR merge
-      // STRICT SCORING: Commits give HP, PRs give XP.
-      let rawXp = (contributions.prsMerged * 50); 
+      // XP Gain Logic (Balanced)
+      // Commits: 10 XP each (Capped at 50 per run to prevent abuse)
+      const commitXp = Math.min(contributions.commits * 10, 50);
+      
+      // PRs: 50 XP each (High effort, no cap)
+      const prXp = contributions.prsMerged * 50;
+      
+      // Issues: 20 XP each
+      const issueXp = contributions.issuesClosed * 20;
+
+      let rawXp = commitXp + prXp + issueXp;
       
       if (next.streak >= 3) {
           rawXp = Math.floor(rawXp * 1.5);
