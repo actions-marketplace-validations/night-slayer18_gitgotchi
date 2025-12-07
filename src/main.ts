@@ -32,7 +32,7 @@ async function run(): Promise<void> {
     const svgGenerator = new SvgGenerator();
     const svgContent = svgGenerator.render(nextState);
 
-    await stateService.saveState(nextState, svgContent, assetsDir);
+    const svgFilename = await stateService.saveState(nextState, svgContent, assetsDir);
 
     if (fs.existsSync(templateFile)) {
         console.log(`Processing template ${templateFile}...`);
@@ -40,7 +40,7 @@ async function run(): Promise<void> {
         
         // Construct relative path for the image link. 
         // Assuming outFile is in root and assetsDir is relative to root.
-        const imagePath = `${assetsDir}/gitgotchi.svg`;
+        const imagePath = `${assetsDir}/${svgFilename}`;
         const imageTag = `![GitGotchi](${imagePath})`;
         
         // Replace placeholder
