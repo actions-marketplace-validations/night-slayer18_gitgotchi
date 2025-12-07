@@ -1,0 +1,16 @@
+name: 'GitGotchi'
+description: 'A virtual pet in your profile README that grows with your contributions.'
+author: 'GitGotchi Team'
+inputs:
+  GITHUB_TOKEN:
+    description: 'GitHub Token'
+    required: true
+  pet_name:
+    description: 'Name of your pet'
+    required: false
+    default: 'GitGotchi'
+    default: 'GitGotchi'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
