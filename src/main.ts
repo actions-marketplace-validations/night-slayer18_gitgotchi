@@ -21,7 +21,7 @@ async function run(): Promise<void> {
     const githubService = new GitHubService(token);
     // Fetch contributions since last fed time
     const lastFedDate = new Date(currentState.lastFed);
-    const contributions = await githubService.getContributionStats(username, lastFedDate);
+    const contributions = await githubService.getContributionStats(username);
 
     const gameEngine = new GameEngine();
     const nextState = gameEngine.calculateNextState(currentState, contributions);
