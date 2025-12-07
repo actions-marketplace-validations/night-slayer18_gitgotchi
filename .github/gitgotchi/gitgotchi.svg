@@ -120,10 +120,10 @@
           <g transform="translate(0, 150)">
             <path class="icon" d="M10,0 L12,7 L19,7 L14,11 L16,18 L10,14 L4,18 L6,11 L1,7 L8,7 Z" transform="translate(0,-5) scale(0.9)" />
             <text x="30" y="10" class="text stat-label">EXPERIENCE</text>
-            <text x="380" y="10" text-anchor="end" class="text stat-value">0 / 100 XP</text>
+            <text x="380" y="10" text-anchor="end" class="text stat-value">75 / 100 XP</text>
 
             <rect x="0" y="20" width="380" height="12" class="bar-bg" />
-            <rect x="0" y="20" width="0" height="12" class="xp-bar" filter="url(#dropshadow)" />
+            <rect x="0" y="20" width="285" height="12" class="xp-bar" filter="url(#dropshadow)" />
           </g>
           
           <!-- Info Grid -->
@@ -141,7 +141,7 @@
                 <circle cx="10" cy="10" r="15" fill="rgba(255,255,255,0.05)" />
                 <text x="10" y="15" text-anchor="middle" font-size="16">🔥</text>
                 <text x="35" y="5" class="text stat-label" font-size="12">STREAK</text>
-                <text x="35" y="22" class="text stat-value">1 DAYS</text>
+                <text x="35" y="22" class="text stat-value">12 DAYS</text>
              </g>
              
              <!-- Status -->
