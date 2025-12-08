@@ -29,8 +29,10 @@ describe('SvgGenerator', () => {
   test('should include pet name and stats', () => {
     const svg = generator.render(baseState);
     expect(svg).toContain('TestPet');
-    expect(svg).toContain('HP 100/100');
-    expect(svg).toContain('Mood: HAPPY');
+    // Check for new labels
+    expect(svg).toContain('Health 100%'); 
+    expect(svg).toContain('XP 0 / 100');
+    expect(svg).toContain('HAPPY'); // Mood text
   });
 
   test('should render vector pet content', () => {

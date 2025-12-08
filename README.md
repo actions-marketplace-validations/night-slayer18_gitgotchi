@@ -1,93 +1,139 @@
-# GitGotchi Profile Pet 🐉
+# GitGotchi: The Pet That Eats Your Commits 🐉
 
-**GitGotchi** is a GitHub Action that maintains a virtual pet in your profile README. This pet's life depends on your coding activity! It is a gamification layer for open-source contributions, designed to motivate developers to commit code daily.
+> **Turn your GitHub Profile into a game!** GitGotchi sits on your profile README and grows based on your daily coding activity.
 
-![GitGotchi Example](gitgotchi.svg)
+![GitGotchi Hero](gitgotchi.svg)
 
-## 🎮 How it Works
+[![GitHub Action](https://img.shields.io/badge/GitHub-Action-blue?logo=github)](https://github.com/marketplace/actions/gitgotchi-profile-pet)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Your pet lives on your GitHub Profile. It needs "fuel" (commits) to survive and grow.
+## 🎮 What is GitGotchi?
 
-*   **HP (Health)**: Decays every day. Recover it by committing code. If it hits 0, your pet becomes a Ghost! 👻
-*   **XP (Experience)**: Earn XP to evolve your pet from an **Egg** 🥚 to a **Dragon** 🐉.
-*   **Streak**: Keeps track of your daily coding streak. If you chain 3+ days, you get a **1.5x XP Multiplier**.
+GitGotchi is a **zero-config GitHub Action** that generates a high-quality SVG "trading card" of a virtual pet. This pet lives and dies by your code:
 
-### Scoring System
-| Action | Reward | Notes |
-| :--- | :--- | :--- |
-| **Commit** | +10 XP / +20 HP | Capped at 50 XP per run to prevent spam. |
-| **Pull Request** | +50 XP | Must be merged. |
-| **Issue Closed** | +20 XP | Must be closed by you. |
+- **Hunger (HP)**: Your pet loses HP every day. Feed it by **Committing code**.
+- **Growth (XP)**: Earn XP from Commits, PRs, and Issues to evolve your pet from an **Egg** 🥚 to a **Legendary Creature** 🐉.
+- **Streak**: Maintain a daily coding streak to unlock **XP Multipliers** (1.5x) and keep your pet Happy! 
+- **Evolution**: Watch your pet change forms as it levels up (Level 1-4). Look out for the Ghost state if you neglect it! 👻
 
 ---
 
-## 🚀 Quick Start
+## 🎨 Themes & Customization
 
-### 1. Create a Personal Access Token (PAT)
-You need a token to fetch your contribution stats (including private repos!).
-1.  Go to [Developer Settings -> Tokens (Classic)](https://github.com/settings/tokens).
-2.  Generate a new token with **`repo`** and **`user`** scopes.
-3.  Add it to your repository secrets as `USER_TOKEN`.
+Make your GitGotchi match your profile aesthetic. Customization is built-in!
 
-### 2. Create a Template
-Create a file named `TEMPLATE.md` in your repository root. Add this placeholder where you want the pet to appear:
+### **Pet Types**
+Choose your companion:
+| Type | Description |
+| :--- | :--- |
+| **`dragon`** 🐉 | The classic fire-breather. Majestic and fierce. (Default) |
+| **`cat`** 🐱 | Cute, cuddly, and judging your code quality. |
+| **`ghost`** 👻 | For those who love the spooky season all year round. |
+
+### **Color Themes**
+Select a theme that fits your vibe:
+- **`dark`**: Sleek midnight blue and grey. (Default)
+- **`light`**: Clean white and soft shadows.
+- **`ocean`**: Deep sea greens and teals.
+- **`dracula`**: Vampire-inspired purple and pink palette.
+
+---
+
+## 🚀 Quick Setup (3 Minutes)
+
+### Step 1: Get a Token
+You need a Personal Access Token (PAT) so GitGotchi can read your contribution stats.
+1. Go to **Settings** → **Developer settings** → **Personal access tokens** → **Tokens (classic)**.
+2. Generate a new token with **`repo`** and **`user`** scopes.
+3. Copy the token.
+4. Go to your Profile Repository's **Settings** → **Secrets and variables** → **Actions**.
+5. Create a **New Repository Secret** named `USER_TOKEN` and paste your token.
+
+### Step 2: Create a Template
+In your repository root, create a file named `TEMPLATE.md`. This will be the source for your README.
+Add the placeholder where you want the image to appear:
 
 ```markdown
-# My Profile
+# Hi there! 👋
+
+Here is my GitGotchi:
 {{ gitgotchi }}
+
+Check out my other projects...
 ```
 
-### 3. Add the Workflow
-Create `.github/workflows/gitgotchi.yml`:
+### Step 3: Add the Workflow
+Create `.github/workflows/gitgotchi.yml` and paste this configuration:
 
 ```yaml
-name: GitGotchi
+name: GitGotchi Update
 on:
   schedule:
-    - cron: '0 0 * * *' # Run daily at midnight
-  push:
-    branches: [ main ]
+    - cron: '0 0 * * *' # Runs every night at midnight UTC
+  workflow_dispatch: # Allows manual run
 
 permissions:
   contents: write
 
 jobs:
-  update-pet:
+  feed-pet:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       
-      - name: Run GitGotchi
+      - name: Update GitGotchi
         uses: night-slayer18/gitgotchi@v1
         with:
           token: ${{ secrets.USER_TOKEN }}
-          pet_name: 'My Dragon'
+          pet_name: 'Codezilla'
+          pet_type: 'dragon' # Options: dragon, cat, ghost
+          theme: 'dracula'   # Options: dark, light, ocean, dracula
           
       - name: Commit & Push
         run: |
-          if [[ "$(git status --porcelain)" != "" ]]; then
             git config user.name github-actions[bot]
             git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-            git add README.md .github/gitgotchi
-            git commit -m "Update GitGotchi Stats"
-            git push
-          fi
+            if [[ -n $(git status --porcelain) ]]; then
+              git add README.md .github/gitgotchi
+              git commit -m "🍱 specific: Feed GitGotchi"
+              git push
+            fi
 ```
+
+### Step 4: Run it!
+Go to the **Actions** tab in your repository, select "GitGotchi Update", and click **Run workflow**. 
+Check your profile README to see your new pet!
 
 ---
 
-## ⚙️ Configuration
+## ⚙️ Configuration Inputs
 
-| Input | Description | Default |
+| Input | Description | Default | Required |
+| :--- | :--- | :--- | :---: |
+| `token` | Your GitHub PAT. | - | ✅ |
+| `pet_name` | The name displayed on the card (max 12 chars recommended). | `GitGotchi` | ❌ |
+| `pet_type` | Species of your pet: `dragon`, `cat`, `ghost`. | `dragon` | ❌ |
+| `theme` | Color theme: `dark`, `light`, `ocean`, `dracula`. | `dark` | ❌ |
+| `template_file` | Source markdown file. | `TEMPLATE.md` | ❌ |
+| `out_file` | Generated markdown file. | `README.md` | ❌ |
+| `assets_dir` | Where to save the SVG and state file. | `.github/gitgotchi` | ❌ |
+
+---
+
+## 📊 Scoring Rules
+
+| Action | Reward | Cap |
 | :--- | :--- | :--- |
-| `token` | **Required.** GitHub Token (PAT recommended for private stats). | None |
-| `pet_name` | Name of your pet displayed on the card. | `GitGotchi` |
-| `template_file` | Source markdown file with `{{ gitgotchi }}`. | `TEMPLATE.md` |
-| `out_file` | Output markdown file to generate. | `README.md` |
-| `assets_dir` | Directory to store JSON state and Images. | `.github/gitgotchi` |
+| **Commit** | +5 XP / +20 HP | Max 50 XP per run |
+| **Pull Request (Merged)** | +50 XP | - |
+| **Issue Closed** | +20 XP | - |
+| **Streak Bonus** | 1.5x XP Multiplier | Active after 3 days |
 
-## 🌟 Features
-*   **Vector Graphics**: High-quality, scalable SVG assets.
-*   **Theme Aware**: Looks great in Dark Mode (Glassmorphism design).
-*   **Smart Caching**: Auto-generates unique filenames to ensure the image updates instantly on GitHub.
-*   **Abuse Protection**: XP caps ensure fair play.
+---
+
+## 🤝 Contributing
+
+Got a better sprite idea? Want a new theme? PRs are welcome! 
+Check out `src/renderer/assets.ts` to add new vectors or `src/renderer/themes.ts` for colors.
+
+**License**: MIT

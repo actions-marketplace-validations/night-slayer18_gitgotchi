@@ -13,6 +13,8 @@ async function run(): Promise<void> {
     const templateFile = core.getInput('template_file') || 'TEMPLATE.md';
     const outFile = core.getInput('out_file') || 'README.md';
     const assetsDir = core.getInput('assets_dir') || '.github/gitgotchi';
+    const theme = core.getInput('theme') || 'dark';
+    const petType = core.getInput('pet_type') || 'dragon';
     const username = github.context.actor;
 
     const stateService = new StateService();
@@ -30,7 +32,7 @@ async function run(): Promise<void> {
     core.info(`New State: HP=${nextState.hp}, XP=${nextState.xp}, Streak=${nextState.streak}`);
 
     const svgGenerator = new SvgGenerator();
-    const svgContent = svgGenerator.render(nextState);
+    const svgContent = svgGenerator.render(nextState, theme, petType);
 
     const svgFilename = await stateService.saveState(nextState, svgContent, assetsDir);
 

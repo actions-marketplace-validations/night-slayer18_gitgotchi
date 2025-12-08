@@ -1,15 +1,19 @@
 import { GameState } from '../services/StateService';
 import { SPRITES } from './assets';
+import { getTheme, Theme } from './themes';
 
 export class SvgGenerator {
-  render(state: GameState): string {
-    const width = 800;
-    const height = 400; 
+  render(state: GameState, themeName: string = 'dark', petType: string = 'dragon'): string {
+    const width = 600; // Condensed width for better profile fit
+    const height = 300; 
     
-    // Get the SVG content string for the current level
-    const spriteContent = SPRITES[state.level] || SPRITES[1];
+    const theme = getTheme(themeName);
+
+    const petSprites = SPRITES[petType.toLowerCase()] || SPRITES['dragon'];
+    const spriteContent = petSprites[state.level] || petSprites[1];
     
-    const moodColor = this.getMoodColor(state.mood);
+    // Mood Colors & Percentages
+    const moodColor = this.getMoodColor(state.mood, theme);
     const hpPercent = (state.hp / state.maxHp) * 100;
     
     let nextLevelXp = 100;
@@ -21,152 +25,167 @@ export class SvgGenerator {
     const xpProgress = state.level >= 4 ? 100 : Math.min(100, ((state.xp - prevLevelXp) / (nextLevelXp - prevLevelXp)) * 100);
 
     return `<?xml version="1.0" encoding="UTF-8"?>
-      <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+      <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="none" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <!-- Gradients -->
+          <!-- Premium Gradients -->
           <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#1a1c29" /> 
-            <stop offset="100%" style="stop-color:#2d3748" /> 
+            <stop offset="0%" stop-color="${theme.background.start}" /> 
+            <stop offset="100%" stop-color="${theme.background.end}" /> 
           </linearGradient>
+
+          <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="${theme.accent}" stop-opacity="0.3" />
+            <stop offset="100%" stop-color="${theme.accent}" stop-opacity="0" />
+          </radialGradient>
           
-          <linearGradient id="cardGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-             <stop offset="0%" style="stop-color:rgba(255, 255, 255, 0.05)" />
-             <stop offset="100%" style="stop-color:rgba(255, 255, 255, 0.02)" />
+          <linearGradient id="cardGradient" x1="0" y1="0" x2="600" y2="300" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="white" stop-opacity="0.1"/>
+            <stop offset="1" stop-color="white" stop-opacity="0.02"/>
           </linearGradient>
 
           <linearGradient id="hpLog" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" style="stop-color:#ff4d4d" />
-            <stop offset="100%" style="stop-color:#ff9e9e" />
+            <stop offset="0%" stop-color="${theme.bars.hp.start}" />
+            <stop offset="100%" stop-color="${theme.bars.hp.end}" />
           </linearGradient>
           
           <linearGradient id="xpLog" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" style="stop-color:#4d94ff" />
-            <stop offset="100%" style="stop-color:#99c2ff" />
+            <stop offset="0%" stop-color="${theme.bars.xp.start}" />
+            <stop offset="100%" stop-color="${theme.bars.xp.end}" />
           </linearGradient>
 
-          <!-- Drop Shadow -->
-          <filter id="dropshadow" height="130%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="3"/> 
-            <feOffset dx="2" dy="2" result="offsetblur"/> 
-            <feComponentTransfer>
-              <feFuncA type="linear" slope="0.5"/> 
-            </feComponentTransfer>
-            <feMerge> 
-              <feMergeNode/>
-              <feMergeNode in="SourceGraphic"/> 
-            </feMerge>
+          <!-- Glassmorphism Blur & Shadow -->
+          <filter id="glass" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="5"/>
+          </filter>
+
+          <filter id="dropshadow">
+            <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="black" flood-opacity="0.3"/>
           </filter>
         </defs>
 
         <style>
-          .text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; fill: #e0e0e0; }
-          .title { font-size: 28px; font-weight: 700; fill: #fff; }
-          .subtitle { font-size: 16px; font-weight: 400; fill: #a0aec0; }
-          .stat-label { font-size: 14px; fill: #a0aec0; font-weight: 600; letter-spacing: 0.5px; }
-          .stat-value { font-size: 14px; font-weight: bold; fill: #fff; }
-          
-          .bar-bg { fill: rgba(255, 255, 255, 0.1); rx: 6; }
-          .hp-bar { fill: url(#hpLog); rx: 6; transition: width 1s ease-out; }
-          .xp-bar { fill: url(#xpLog); rx: 6; transition: width 1s ease-out; }
-          
-          .card-bg { fill: url(#bgGradient); rx: 16; }
-          .glass-panel { fill: url(#cardGradient); stroke: rgba(255, 255, 255, 0.1); stroke-width: 1; rx: 12; }
+          .text-base { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+          .title { font-size: 24px; font-weight: 800; fill: ${theme.text.title}; letter-spacing: 0.5px; }
+          .subtitle { font-size: 14px; font-weight: 500; fill: ${theme.text.subtitle}; opacity: 0.8; }
+          .label { font-size: 11px; font-weight: 700; fill: ${theme.text.label}; letter-spacing: 1px; text-transform: uppercase; }
+          .value { font-size: 12px; font-weight: 700; fill: ${theme.text.value}; }
           
           /* Animations */
           @keyframes float {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-8px); }
-            100% { transform: translateY(0px); }
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-6px); }
           }
-          
-          .pet-anim { 
-             animation: float 4s ease-in-out infinite; 
-             transform-origin: center;
+          @keyframes pulse {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.05); }
           }
+          @keyframes shimmer {
+             0% { opacity: 0.5; }
+             50% { opacity: 1; }
+             100% { opacity: 0.5; }
+          }
+
+          .pet-anim { animation: float 6s ease-in-out infinite; transform-origin: center; }
+          .glow-anim { animation: pulse 4s ease-in-out infinite; transform-origin: center; }
+          .bar-anim { transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); }
           
-          .icon { fill: #a0aec0; }
+          .glass-card {
+            fill: url(#cardGradient);
+            stroke: ${theme.ring};
+            stroke-width: 1px;
+            rx: 16px;
+          }
         </style>
         
-        <!-- Background -->
-        <rect x="0" y="0" width="${width}" height="${height}" class="card-bg" />
+        <!-- Main Card Container -->
+        <rect x="0" y="0" width="${width}" height="${height}" rx="16" fill="url(#bgGradient)" />
         
-        <!-- Glass Panel Overlay -->
-        <rect x="20" y="20" width="${width - 40}" height="${height - 40}" class="glass-panel" />
+        <!-- Ambient Glow Background -->
+        <circle cx="120" cy="150" r="120" fill="url(#glow)" class="glow-anim" />
+        
+        <!-- Glass Overlay -->
+        <rect x="1" y="1" width="${width-2}" height="${height-2}" class="glass-card" />
 
-        <!-- Pet Section -->
-        <g transform="translate(60, 60)">
-             <g class="pet-anim">
-                ${spriteContent}
+        <!-- LEFT SIDE: Content -->
+        <g transform="translate(30, 30)">
+           <!-- Title Block -->
+           <text x="0" y="24" class="text-base title">${state.petName}</text>
+           <text x="0" y="46" class="text-base subtitle">Lvl ${state.level} • ${petType.charAt(0).toUpperCase() + petType.slice(1)}</text>
+           
+           <!-- Info Badges (Mood & Streak) -->
+           <g transform="translate(0, 70)">
+             <!-- Mood Badge -->
+             <rect x="0" y="0" width="120" height="32" rx="16" fill="rgba(0,0,0,0.2)" stroke="${theme.ring}" stroke-width="1"/>
+             <text x="60" y="21" text-anchor="middle" class="text-base value" fill="${theme.text.value}">
+               ${this.getMoodEmoji(state.mood)} ${state.mood.toUpperCase()}
+             </text>
+             
+             <!-- Streak Badge -->
+             <g transform="translate(130, 0)">
+                <rect x="0" y="0" width="150" height="32" rx="16" fill="rgba(0,0,0,0.2)" stroke="${theme.ring}" stroke-width="1"/>
+                <text x="75" y="21" text-anchor="middle" class="text-base value" fill="${theme.text.value}">
+                   🔥 ${state.streak} DAY STREAK
+                </text>
              </g>
+           </g>
+
+           <!-- Stats Bars -->
+           <g transform="translate(0, 130)">
+             <!-- HP -->
+             <g>
+               <text x="0" y="0" class="text-base label">Health ${Math.round(state.hp)}%</text>
+               <rect x="0" y="10" width="220" height="8" rx="4" fill="rgba(255,255,255,0.1)" />
+               <rect x="0" y="10" width="${(hpPercent/100)*220}" height="8" rx="4" fill="url(#hpLog)" class="bar-anim" />
+               <!-- Shine/Glow on Bar -->
+               <rect x="0" y="10" width="${(hpPercent/100)*220}" height="8" rx="4" fill="white" opacity="0.1" />
+             </g>
+             
+             <!-- XP -->
+             <g transform="translate(0, 45)">
+               <text x="0" y="0" class="text-base label">XP ${state.xp} / ${nextLevelXp}</text>
+               <rect x="0" y="10" width="220" height="8" rx="4" fill="rgba(255,255,255,0.1)" />
+               <rect x="0" y="10" width="${(xpProgress/100)*220}" height="8" rx="4" fill="url(#xpLog)" class="bar-anim" />
+               <rect x="0" y="10" width="${(xpProgress/100)*220}" height="8" rx="4" fill="white" opacity="0.1" />
+             </g>
+           </g>
+           
+           <!-- Footer -->
+           <text x="0" y="260" class="text-base subtitle" font-size="12">Last fed: ${new Date(state.lastFed).toLocaleDateString()}</text>
         </g>
 
-        <!-- Stats Section -->
-        <g transform="translate(360, 70)">
-          <!-- Header -->
-          <text x="0" y="10" class="text title">${state.petName} <tspan fill="#a0aec0" font-weight="300">(Lvl ${state.level})</tspan></text>
-          <text x="0" y="40" class="text subtitle">The Digital Guardian</text>
-          
-          <line x1="0" y1="60" x2="400" y2="60" stroke="rgba(255,255,255,0.1)" stroke-width="1" />
-
-          <!-- HP Bar -->
-          <g transform="translate(0, 90)">
-            <path class="icon" d="M10,0 C15,-5 20,0 10,10 C0,0 5,-5 10,0" transform="scale(1.2)" />
-            <text x="30" y="10" class="text stat-label">HEALTH</text>
-            <text x="380" y="10" text-anchor="end" class="text stat-value">${Math.round(state.hp)} / ${state.maxHp}</text>
-            
-            <rect x="0" y="20" width="380" height="12" class="bar-bg" />
-            <rect x="0" y="20" width="${(hpPercent / 100) * 380}" height="12" class="hp-bar" filter="url(#dropshadow)" />
-          </g>
-
-          <!-- XP Bar -->
-          <g transform="translate(0, 150)">
-            <path class="icon" d="M10,0 L12,7 L19,7 L14,11 L16,18 L10,14 L4,18 L6,11 L1,7 L8,7 Z" transform="translate(0,-5) scale(0.9)" />
-            <text x="30" y="10" class="text stat-label">EXPERIENCE</text>
-            <text x="380" y="10" text-anchor="end" class="text stat-value">${state.xp} / ${nextLevelXp} XP</text>
-
-            <rect x="0" y="20" width="380" height="12" class="bar-bg" />
-            <rect x="0" y="20" width="${(xpProgress / 100) * 380}" height="12" class="xp-bar" filter="url(#dropshadow)" />
-          </g>
-          
-          <!-- Info Grid -->
-          <g transform="translate(0, 210)">
-             <!-- Mood -->
-             <g>
-                <circle cx="10" cy="10" r="15" fill="rgba(255,255,255,0.05)" />
-                <text x="10" y="15" text-anchor="middle" font-size="16">😊</text>
-                <text x="35" y="5" class="text stat-label" font-size="12">MOOD</text>
-                <text x="35" y="22" class="text stat-value" fill="${moodColor}">${state.mood.toUpperCase()}</text>
-             </g>
-             
-             <!-- Streak -->
-             <g transform="translate(140, 0)">
-                <circle cx="10" cy="10" r="15" fill="rgba(255,255,255,0.05)" />
-                <text x="10" y="15" text-anchor="middle" font-size="16">🔥</text>
-                <text x="35" y="5" class="text stat-label" font-size="12">STREAK</text>
-                <text x="35" y="22" class="text stat-value">${state.streak} DAYS</text>
-             </g>
-             
-             <!-- Status -->
-             <g transform="translate(280, 0)">
-                <circle cx="10" cy="10" r="15" fill="rgba(255,255,255,0.05)" />
-                <text x="10" y="15" text-anchor="middle" font-size="16">⭐</text>
-                <text x="35" y="5" class="text stat-label" font-size="12">STATUS</text>
-                <text x="35" y="22" class="text stat-value">ACTIVE</text>
-             </g>
-          </g>
+        <!-- RIGHT SIDE: Pet Spotlight -->
+        <g transform="translate(350, 50)">
+           <!-- Platform -->
+           <ellipse cx="100" cy="180" rx="90" ry="20" fill="rgba(0,0,0,0.3)" filter="url(#glass)" />
+           
+           <!-- Pet Sprite -->
+           <g class="pet-anim">
+             ${spriteContent}
+           </g>
         </g>
         
       </svg>
     `;
   }
 
-  private getMoodColor(mood: string): string {
+  private getMoodColor(mood: string, theme: Theme): string {
     switch (mood) {
-      case 'excited': return '#4caf50';
-      case 'happy': return '#8bc34a';
-      case 'neutral': return '#ffc107';
-      case 'sad': return '#ff9800';
-      default: return '#9e9e9e';
+      case 'excited': return theme.mood.excited;
+      case 'happy': return theme.mood.happy;
+      case 'neutral': return theme.mood.neutral;
+      case 'sad': return theme.mood.sad;
+      default: return theme.mood.angry;
+    }
+  }
+
+  private getMoodEmoji(mood: string): string {
+    switch(mood) {
+        case 'excited': return '🤩';
+        case 'happy': return '😊';
+        case 'neutral': return '😐';
+        case 'sad': return '😢';
+        case 'angry': return '😡';
+        default: return '😶';
     }
   }
 }

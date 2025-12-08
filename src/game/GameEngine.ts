@@ -4,8 +4,14 @@ import { ContributionStats } from '../services/GitHubService';
 export class GameEngine {
   calculateNextState(current: GameState, contributions: ContributionStats): GameState {
     const now = new Date();
-    const lastFed = new Date(current.lastFed);
+    
+    const lastFedStr = current.lastFed.includes('T') ? current.lastFed : current.lastFed.replace(' ', 'T') + 'Z';
+    const lastFed = new Date(lastFedStr);
+    
     const next = { ...current };
+
+    next.lastFed = now.toISOString().replace('T', ' ').split('.')[0];
+    // if ((next as any).lastFedText) delete (next as any).lastFedText; // This line was removed
 
     // Initialize moodScore if missing (for backward compatibility or new field)
     if (next.moodScore === undefined) next.moodScore = 5;
@@ -33,8 +39,8 @@ export class GameEngine {
       next.streak = contributions.streak;
 
       // XP Gain Logic (Balanced)
-      // Commits: 10 XP each (Capped at 50 per run to prevent abuse)
-      const commitXp = Math.min(contributions.commits * 10, 50);
+      // Commits: 5 XP each (Capped at 50 per run to prevent abuse)
+      const commitXp = Math.min(contributions.commits * 5, 50);
       
       // PRs: 50 XP each (High effort, no cap)
       const prXp = contributions.prsMerged * 50;
@@ -74,7 +80,9 @@ export class GameEngine {
         default: next.mood = 'angry'; break;
     }
 
-    next.lastFed = now.toISOString();
+    // Save as Readable UTC String: "YYYY-MM-DD HH:mm:ss"
+    next.lastFed = now.toISOString().replace('T', ' ').split('.')[0];
+    if ((next as any).lastFedText) delete (next as any).lastFedText;
 
     return next;
   }

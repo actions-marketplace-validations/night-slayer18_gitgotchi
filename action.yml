@@ -21,6 +21,14 @@ inputs:
     description: 'Directory to store state and svg (e.g. .github/gitgotchi)'
     required: false
     default: '.github/gitgotchi'
+  theme:
+    description: 'Theme (dark, light, ocean, dracula)'
+    required: false
+    default: 'dark'
+  pet_type:
+    description: 'Pet Type (dragon, cat, ghost)'
+    required: false
+    default: 'dragon'
 
 runs:
   using: 'node20'

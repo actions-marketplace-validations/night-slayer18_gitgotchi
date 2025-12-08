@@ -9,7 +9,7 @@ export interface GameState {
   mood: string;
   moodScore: number;
   level: number;
-  lastFed: string;
+  lastFed: string; // YYYY-MM-DD HH:mm:ss (UTC)
   streak: number;
 }
 
@@ -37,7 +37,9 @@ export class StateService {
       if (fs.existsSync(statePath)) {
         console.log(`Loading state from ${statePath}`);
         const content = fs.readFileSync(statePath, 'utf8');
-        return JSON.parse(content) as GameState;
+        const loadedState = JSON.parse(content) as GameState;
+        
+        return loadedState;
       } else {
           console.log(`State file ${statePath} not found. Starting fresh.`);
       }
