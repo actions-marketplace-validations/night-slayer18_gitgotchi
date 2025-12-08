@@ -29932,11 +29932,11 @@ exports.GameEngine = void 0;
 class GameEngine {
     calculateNextState(current, contributions) {
         const now = new Date();
-        const lastFed = new Date(current.lastFed);
+        // Parse the readable timestamp as UTC
+        const lastFedStr = current.lastFed.replace(' ', 'T') + 'Z';
+        const lastFed = new Date(lastFedStr);
         const next = { ...current };
-        // Initialize moodScore if missing (for backward compatibility or new field)
-        if (next.moodScore === undefined)
-            next.moodScore = 5;
+        next.lastFed = now.toISOString().replace('T', ' ').split('.')[0];
         // 1. Decay (Based on time passed)
         const hoursElapsed = (now.getTime() - lastFed.getTime()) / (1000 * 60 * 60);
         const decayCycles = Math.floor(hoursElapsed / 24);
@@ -29954,8 +29954,8 @@ class GameEngine {
             // Streak Logic: Sync with Real GitHub Streak
             next.streak = contributions.streak;
             // XP Gain Logic (Balanced)
-            // Commits: 10 XP each (Capped at 50 per run to prevent abuse)
-            const commitXp = Math.min(contributions.commits * 10, 50);
+            // Commits: 5 XP each (Capped at 50 per run to prevent abuse)
+            const commitXp = Math.min(contributions.commits * 5, 50);
             // PRs: 50 XP each (High effort, no cap)
             const prXp = contributions.prsMerged * 50;
             // Issues: 20 XP each
@@ -30000,7 +30000,10 @@ class GameEngine {
                 next.mood = 'angry';
                 break;
         }
-        next.lastFed = now.toISOString();
+        // Save as Readable UTC String: "YYYY-MM-DD HH:mm:ss"
+        next.lastFed = now.toISOString().replace('T', ' ').split('.')[0];
+        if (next.lastFedText)
+            delete next.lastFedText;
         return next;
     }
 }
@@ -30062,6 +30065,8 @@ async function run() {
         const templateFile = core.getInput('template_file') || 'TEMPLATE.md';
         const outFile = core.getInput('out_file') || 'README.md';
         const assetsDir = core.getInput('assets_dir') || '.github/gitgotchi';
+        const theme = core.getInput('theme') || 'dark';
+        const petType = core.getInput('pet_type') || 'dragon';
         const username = github.context.actor;
         const stateService = new StateService_1.StateService();
         const currentState = await stateService.loadState(petName, assetsDir);
@@ -30074,7 +30079,7 @@ async function run() {
         nextState.petName = petName;
         core.info(`New State: HP=${nextState.hp}, XP=${nextState.xp}, Streak=${nextState.streak}`);
         const svgGenerator = new SvgGenerator_1.SvgGenerator();
-        const svgContent = svgGenerator.render(nextState);
+        const svgContent = svgGenerator.render(nextState, theme, petType);
         const svgFilename = await stateService.saveState(nextState, svgContent, assetsDir);
         if (fs.existsSync(templateFile)) {
             console.log(`Processing template ${templateFile}...`);
@@ -30113,13 +30118,16 @@ run();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SvgGenerator = void 0;
 const assets_1 = __nccwpck_require__(3998);
+const themes_1 = __nccwpck_require__(4585);
 class SvgGenerator {
-    render(state) {
-        const width = 800;
-        const height = 400;
-        // Get the SVG content string for the current level
-        const spriteContent = assets_1.SPRITES[state.level] || assets_1.SPRITES[1];
-        const moodColor = this.getMoodColor(state.mood);
+    render(state, themeName = 'dark', petType = 'dragon') {
+        const width = 600; // Condensed width for better profile fit
+        const height = 300;
+        const theme = (0, themes_1.getTheme)(themeName);
+        const petSprites = assets_1.SPRITES[petType.toLowerCase()] || assets_1.SPRITES['dragon'];
+        const spriteContent = petSprites[state.level] || petSprites[1];
+        // Mood Colors & Percentages
+        const moodColor = this.getMoodColor(state.mood, theme);
         const hpPercent = (state.hp / state.maxHp) * 100;
         let nextLevelXp = 100;
         let prevLevelXp = 0;
@@ -30137,151 +30145,165 @@ class SvgGenerator {
         }
         const xpProgress = state.level >= 4 ? 100 : Math.min(100, ((state.xp - prevLevelXp) / (nextLevelXp - prevLevelXp)) * 100);
         return `<?xml version="1.0" encoding="UTF-8"?>
-      <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+      <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="none" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <!-- Gradients -->
+          <!-- Premium Gradients -->
           <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#1a1c29" /> 
-            <stop offset="100%" style="stop-color:#2d3748" /> 
+            <stop offset="0%" stop-color="${theme.background.start}" /> 
+            <stop offset="100%" stop-color="${theme.background.end}" /> 
           </linearGradient>
+
+          <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="${theme.accent}" stop-opacity="0.3" />
+            <stop offset="100%" stop-color="${theme.accent}" stop-opacity="0" />
+          </radialGradient>
           
-          <linearGradient id="cardGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-             <stop offset="0%" style="stop-color:rgba(255, 255, 255, 0.05)" />
-             <stop offset="100%" style="stop-color:rgba(255, 255, 255, 0.02)" />
+          <linearGradient id="cardGradient" x1="0" y1="0" x2="600" y2="300" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="white" stop-opacity="0.1"/>
+            <stop offset="1" stop-color="white" stop-opacity="0.02"/>
           </linearGradient>
 
           <linearGradient id="hpLog" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" style="stop-color:#ff4d4d" />
-            <stop offset="100%" style="stop-color:#ff9e9e" />
+            <stop offset="0%" stop-color="${theme.bars.hp.start}" />
+            <stop offset="100%" stop-color="${theme.bars.hp.end}" />
           </linearGradient>
           
           <linearGradient id="xpLog" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" style="stop-color:#4d94ff" />
-            <stop offset="100%" style="stop-color:#99c2ff" />
+            <stop offset="0%" stop-color="${theme.bars.xp.start}" />
+            <stop offset="100%" stop-color="${theme.bars.xp.end}" />
           </linearGradient>
 
-          <!-- Drop Shadow -->
-          <filter id="dropshadow" height="130%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="3"/> 
-            <feOffset dx="2" dy="2" result="offsetblur"/> 
-            <feComponentTransfer>
-              <feFuncA type="linear" slope="0.5"/> 
-            </feComponentTransfer>
-            <feMerge> 
-              <feMergeNode/>
-              <feMergeNode in="SourceGraphic"/> 
-            </feMerge>
+          <!-- Glassmorphism Blur & Shadow -->
+          <filter id="glass" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="5"/>
+          </filter>
+
+          <filter id="dropshadow">
+            <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="black" flood-opacity="0.3"/>
           </filter>
         </defs>
 
         <style>
-          .text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; fill: #e0e0e0; }
-          .title { font-size: 28px; font-weight: 700; fill: #fff; }
-          .subtitle { font-size: 16px; font-weight: 400; fill: #a0aec0; }
-          .stat-label { font-size: 14px; fill: #a0aec0; font-weight: 600; letter-spacing: 0.5px; }
-          .stat-value { font-size: 14px; font-weight: bold; fill: #fff; }
-          
-          .bar-bg { fill: rgba(255, 255, 255, 0.1); rx: 6; }
-          .hp-bar { fill: url(#hpLog); rx: 6; transition: width 1s ease-out; }
-          .xp-bar { fill: url(#xpLog); rx: 6; transition: width 1s ease-out; }
-          
-          .card-bg { fill: url(#bgGradient); rx: 16; }
-          .glass-panel { fill: url(#cardGradient); stroke: rgba(255, 255, 255, 0.1); stroke-width: 1; rx: 12; }
+          .text-base { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+          .title { font-size: 24px; font-weight: 800; fill: ${theme.text.title}; letter-spacing: 0.5px; }
+          .subtitle { font-size: 14px; font-weight: 500; fill: ${theme.text.subtitle}; opacity: 0.8; }
+          .label { font-size: 11px; font-weight: 700; fill: ${theme.text.label}; letter-spacing: 1px; text-transform: uppercase; }
+          .value { font-size: 12px; font-weight: 700; fill: ${theme.text.value}; }
           
           /* Animations */
           @keyframes float {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-8px); }
-            100% { transform: translateY(0px); }
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-6px); }
           }
-          
-          .pet-anim { 
-             animation: float 4s ease-in-out infinite; 
-             transform-origin: center;
+          @keyframes pulse {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.05); }
           }
+          @keyframes shimmer {
+             0% { opacity: 0.5; }
+             50% { opacity: 1; }
+             100% { opacity: 0.5; }
+          }
+
+          .pet-anim { animation: float 6s ease-in-out infinite; transform-origin: center; }
+          .glow-anim { animation: pulse 4s ease-in-out infinite; transform-origin: center; }
+          .bar-anim { transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); }
           
-          .icon { fill: #a0aec0; }
+          .glass-card {
+            fill: url(#cardGradient);
+            stroke: ${theme.ring};
+            stroke-width: 1px;
+            rx: 16px;
+          }
         </style>
         
-        <!-- Background -->
-        <rect x="0" y="0" width="${width}" height="${height}" class="card-bg" />
+        <!-- Main Card Container -->
+        <rect x="0" y="0" width="${width}" height="${height}" rx="16" fill="url(#bgGradient)" />
         
-        <!-- Glass Panel Overlay -->
-        <rect x="20" y="20" width="${width - 40}" height="${height - 40}" class="glass-panel" />
+        <!-- Ambient Glow Background -->
+        <circle cx="120" cy="150" r="120" fill="url(#glow)" class="glow-anim" />
+        
+        <!-- Glass Overlay -->
+        <rect x="1" y="1" width="${width - 2}" height="${height - 2}" class="glass-card" />
 
-        <!-- Pet Section -->
-        <g transform="translate(60, 60)">
-             <g class="pet-anim">
-                ${spriteContent}
+        <!-- LEFT SIDE: Content -->
+        <g transform="translate(30, 30)">
+           <!-- Title Block -->
+           <text x="0" y="24" class="text-base title">${state.petName}</text>
+           <text x="0" y="46" class="text-base subtitle">Lvl ${state.level} • ${petType.charAt(0).toUpperCase() + petType.slice(1)}</text>
+           
+           <!-- Info Badges (Mood & Streak) -->
+           <g transform="translate(0, 70)">
+             <!-- Mood Badge -->
+             <rect x="0" y="0" width="120" height="32" rx="16" fill="rgba(0,0,0,0.2)" stroke="${theme.ring}" stroke-width="1"/>
+             <text x="60" y="21" text-anchor="middle" class="text-base value" fill="${theme.text.value}">
+               ${this.getMoodEmoji(state.mood)} ${state.mood.toUpperCase()}
+             </text>
+             
+             <!-- Streak Badge -->
+             <g transform="translate(130, 0)">
+                <rect x="0" y="0" width="150" height="32" rx="16" fill="rgba(0,0,0,0.2)" stroke="${theme.ring}" stroke-width="1"/>
+                <text x="75" y="21" text-anchor="middle" class="text-base value" fill="${theme.text.value}">
+                   🔥 ${state.streak} DAY STREAK
+                </text>
              </g>
+           </g>
+
+           <!-- Stats Bars -->
+           <g transform="translate(0, 130)">
+             <!-- HP -->
+             <g>
+               <text x="0" y="0" class="text-base label">Health ${Math.round(state.hp)}%</text>
+               <rect x="0" y="10" width="220" height="8" rx="4" fill="rgba(255,255,255,0.1)" />
+               <rect x="0" y="10" width="${(hpPercent / 100) * 220}" height="8" rx="4" fill="url(#hpLog)" class="bar-anim" />
+               <!-- Shine/Glow on Bar -->
+               <rect x="0" y="10" width="${(hpPercent / 100) * 220}" height="8" rx="4" fill="white" opacity="0.1" />
+             </g>
+             
+             <!-- XP -->
+             <g transform="translate(0, 45)">
+               <text x="0" y="0" class="text-base label">XP ${state.xp} / ${nextLevelXp}</text>
+               <rect x="0" y="10" width="220" height="8" rx="4" fill="rgba(255,255,255,0.1)" />
+               <rect x="0" y="10" width="${(xpProgress / 100) * 220}" height="8" rx="4" fill="url(#xpLog)" class="bar-anim" />
+               <rect x="0" y="10" width="${(xpProgress / 100) * 220}" height="8" rx="4" fill="white" opacity="0.1" />
+             </g>
+           </g>
+           
+           <!-- Footer -->
+           <text x="0" y="260" class="text-base subtitle" font-size="12">Last fed: ${new Date(state.lastFed).toLocaleDateString()}</text>
         </g>
 
-        <!-- Stats Section -->
-        <g transform="translate(360, 70)">
-          <!-- Header -->
-          <text x="0" y="10" class="text title">${state.petName} <tspan fill="#a0aec0" font-weight="300">(Lvl ${state.level})</tspan></text>
-          <text x="0" y="40" class="text subtitle">The Digital Guardian</text>
-          
-          <line x1="0" y1="60" x2="400" y2="60" stroke="rgba(255,255,255,0.1)" stroke-width="1" />
-
-          <!-- HP Bar -->
-          <g transform="translate(0, 90)">
-            <path class="icon" d="M10,0 C15,-5 20,0 10,10 C0,0 5,-5 10,0" transform="scale(1.2)" />
-            <text x="30" y="10" class="text stat-label">HEALTH</text>
-            <text x="380" y="10" text-anchor="end" class="text stat-value">${Math.round(state.hp)} / ${state.maxHp}</text>
-            
-            <rect x="0" y="20" width="380" height="12" class="bar-bg" />
-            <rect x="0" y="20" width="${(hpPercent / 100) * 380}" height="12" class="hp-bar" filter="url(#dropshadow)" />
-          </g>
-
-          <!-- XP Bar -->
-          <g transform="translate(0, 150)">
-            <path class="icon" d="M10,0 L12,7 L19,7 L14,11 L16,18 L10,14 L4,18 L6,11 L1,7 L8,7 Z" transform="translate(0,-5) scale(0.9)" />
-            <text x="30" y="10" class="text stat-label">EXPERIENCE</text>
-            <text x="380" y="10" text-anchor="end" class="text stat-value">${state.xp} / ${nextLevelXp} XP</text>
-
-            <rect x="0" y="20" width="380" height="12" class="bar-bg" />
-            <rect x="0" y="20" width="${(xpProgress / 100) * 380}" height="12" class="xp-bar" filter="url(#dropshadow)" />
-          </g>
-          
-          <!-- Info Grid -->
-          <g transform="translate(0, 210)">
-             <!-- Mood -->
-             <g>
-                <circle cx="10" cy="10" r="15" fill="rgba(255,255,255,0.05)" />
-                <text x="10" y="15" text-anchor="middle" font-size="16">😊</text>
-                <text x="35" y="5" class="text stat-label" font-size="12">MOOD</text>
-                <text x="35" y="22" class="text stat-value" fill="${moodColor}">${state.mood.toUpperCase()}</text>
-             </g>
-             
-             <!-- Streak -->
-             <g transform="translate(140, 0)">
-                <circle cx="10" cy="10" r="15" fill="rgba(255,255,255,0.05)" />
-                <text x="10" y="15" text-anchor="middle" font-size="16">🔥</text>
-                <text x="35" y="5" class="text stat-label" font-size="12">STREAK</text>
-                <text x="35" y="22" class="text stat-value">${state.streak} DAYS</text>
-             </g>
-             
-             <!-- Status -->
-             <g transform="translate(280, 0)">
-                <circle cx="10" cy="10" r="15" fill="rgba(255,255,255,0.05)" />
-                <text x="10" y="15" text-anchor="middle" font-size="16">⭐</text>
-                <text x="35" y="5" class="text stat-label" font-size="12">STATUS</text>
-                <text x="35" y="22" class="text stat-value">ACTIVE</text>
-             </g>
-          </g>
+        <!-- RIGHT SIDE: Pet Spotlight -->
+        <g transform="translate(350, 50)">
+           <!-- Platform -->
+           <ellipse cx="100" cy="180" rx="90" ry="20" fill="rgba(0,0,0,0.3)" filter="url(#glass)" />
+           
+           <!-- Pet Sprite -->
+           <g class="pet-anim">
+             ${spriteContent}
+           </g>
         </g>
         
       </svg>
     `;
     }
-    getMoodColor(mood) {
+    getMoodColor(mood, theme) {
         switch (mood) {
-            case 'excited': return '#4caf50';
-            case 'happy': return '#8bc34a';
-            case 'neutral': return '#ffc107';
-            case 'sad': return '#ff9800';
-            default: return '#9e9e9e';
+            case 'excited': return theme.mood.excited;
+            case 'happy': return theme.mood.happy;
+            case 'neutral': return theme.mood.neutral;
+            case 'sad': return theme.mood.sad;
+            default: return theme.mood.angry;
+        }
+    }
+    getMoodEmoji(mood) {
+        switch (mood) {
+            case 'excited': return '🤩';
+            case 'happy': return '😊';
+            case 'neutral': return '😐';
+            case 'sad': return '😢';
+            case 'angry': return '😡';
+            default: return '😶';
         }
     }
 }
@@ -30298,162 +30320,433 @@ exports.SvgGenerator = SvgGenerator;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.SPRITES = void 0;
 exports.SPRITES = {
-    1: `
-    <!-- Egg -->
-    <defs>
-      <radialGradient id="eggGrad" cx="30%" cy="30%" r="70%">
-        <stop offset="0%" style="stop-color:#fce4ec" />
-        <stop offset="100%" style="stop-color:#f06292" />
-      </radialGradient>
-      <filter id="glow">
-        <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
-        <feMerge>
-          <feMergeNode in="coloredBlur"/>
-          <feMergeNode in="SourceGraphic"/>
-        </feMerge>
-      </filter>
-    </defs>
-    <g transform="translate(100, 100) scale(3)">
-      <ellipse cx="0" cy="0" rx="25" ry="32" fill="url(#eggGrad)" stroke="#880e4f" stroke-width="1.5"/>
-      <path d="M-15,-10 Q-5,0 -15,10" fill="none" stroke="#f8bbd0" stroke-width="2" opacity="0.6"/>
-      <circle cx="10" cy="-15" r="3" fill="white" opacity="0.4"/>
-    </g>
-  `,
-    2: `
-    <!-- Baby Dragon -->
-    <defs>
-      <linearGradient id="babyBody" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" style="stop-color:#b388ff" /> <!-- Light Purple -->
-        <stop offset="100%" style="stop-color:#651fff" /> <!-- Deep Purple -->
-      </linearGradient>
-    </defs>
-    <g transform="translate(100, 100) scale(2.2)">
-      <!-- Tail -->
-      <path d="M-20,20 Q-40,30 -30,10" fill="none" stroke="#651fff" stroke-width="4" stroke-linecap="round"/>
-      
-      <!-- Body -->
-      <circle cx="0" cy="10" r="20" fill="url(#babyBody)" stroke="#311b92" stroke-width="1.5"/>
-      
-      <!-- Head -->
-      <circle cx="0" cy="-15" r="18" fill="url(#babyBody)" stroke="#311b92" stroke-width="1.5"/>
-      
-      <!-- Eyes -->
-      <circle cx="-6" cy="-15" r="4" fill="white"/>
-      <circle cx="-6" cy="-15" r="1.5" fill="black"/>
-      <circle cx="6" cy="-15" r="4" fill="white"/>
-      <circle cx="6" cy="-15" r="1.5" fill="black"/>
-      
-      <!-- Little Wings -->
-      <path d="M20,10 Q35,-5 20,-10" fill="#b388ff" stroke="#311b92" stroke-width="1"/>
-      <path d="M-20,10 Q-35,-5 -20,-10" fill="#b388ff" stroke="#311b92" stroke-width="1"/>
-      
-      <!-- Horns -->
-      <path d="M-5,-30 L-8,-40 L-2,-32 Z" fill="#ede7f6" stroke="#311b92" stroke-width="1"/>
-      <path d="M5,-30 L8,-40 L2,-32 Z" fill="#ede7f6" stroke="#311b92" stroke-width="1"/>
-    </g>
-  `,
-    3: `
-    <!-- Teen Dragon -->
-    <defs>
-      <linearGradient id="teenBody" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" style="stop-color:#64ffda" /> <!-- Teal -->
-        <stop offset="100%" style="stop-color:#00bfa5" /> <!-- Darker Teal -->
-      </linearGradient>
-    </defs>
-    <g transform="translate(100, 100) scale(1.8)">
-      <!-- Body -->
-      <path d="M-15,30 Q0,50 15,30 L10,-10 L-10,-10 Z" fill="url(#teenBody)" stroke="#004d40" stroke-width="1.5"/>
-      
-      <!-- Neck -->
-      <path d="M-5,-10 Q0,-30 5,-10" fill="url(#teenBody)" stroke="#004d40" stroke-width="1.5"/>
-      
-      <!-- Head -->
-      <path d="M-12,-35 Q0,-55 12,-35 Q15,-15 0,-10 Q-15,-15 -12,-35 Z" fill="url(#teenBody)" stroke="#004d40" stroke-width="1.5"/>
-      
-      <!-- Eyes (Bored look) -->
-      <path d="M-8,-30 L-2,-30" stroke="black" stroke-width="2"/>
-      <path d="M2,-30 L8,-30" stroke="black" stroke-width="2"/>
-      
-      <!-- Wings -->
-      <path d="M10,0 Q40,-20 50,10 L30,20 Z" fill="#a7ffeb" stroke="#004d40" stroke-width="1.5"/>
-      <path d="M-10,0 Q-40,-20 -50,10 L-30,20 Z" fill="#a7ffeb" stroke="#004d40" stroke-width="1.5"/>
-      
-      <!-- Spikes -->
-      <path d="M0,-55 L-3,-65 L3,-65 Z" fill="#004d40"/>
-      <path d="M0,50 L-3,65 L3,60 Z" fill="#004d40"/>
-    </g>
-  `,
-    4: `
-    <!-- Adult Dragon -->
-    <defs>
-      <linearGradient id="adultBody" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" style="stop-color:#ff5252" /> <!-- Red -->
-        <stop offset="100%" style="stop-color:#b71c1c" /> <!-- Dark Red -->
-      </linearGradient>
-      <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
-        <feOffset dx="2" dy="2" result="offsetblur"/>
-        <feComponentTransfer>
-          <feFuncA type="linear" slope="0.3"/>
-        </feComponentTransfer>
-        <feMerge>
-          <feMergeNode/>
-          <feMergeNode in="SourceGraphic"/>
-        </feMerge>
-      </filter>
-    </defs>
-    <g transform="translate(100, 100) scale(1.5)" filter="url(#shadow)">
-      <!-- Tail -->
-      <path d="M-20,40 Q-60,60 -40,10" fill="none" stroke="#b71c1c" stroke-width="6" stroke-linecap="round"/>
-      
-      <!-- Wings (Majestic) -->
-      <path d="M15,0 Q60,-40 90,0 Q70,40 20,20 Z" fill="#ff8a80" stroke="#b71c1c" stroke-width="2"/>
-      <path d="M-15,0 Q-60,-40 -90,0 Q-70,40 -20,20 Z" fill="#ff8a80" stroke="#b71c1c" stroke-width="2"/>
-      
-      <!-- Body -->
-      <path d="M-20,40 Q0,60 20,40 L15,-10 L-15,-10 Z" fill="url(#adultBody)" stroke="#b71c1c" stroke-width="2"/>
-      
-      <!-- Head -->
-      <path d="M-15,-10 Q-20,-50 0,-60 Q20,-50 15,-10 Z" fill="url(#adultBody)" stroke="#b71c1c" stroke-width="2"/>
-      
-      <!-- Eyes (Fierce) -->
-      <path d="M-10,-35 L-2,-30 L-10,-28 Z" fill="#ffeb3b"/>
-      <path d="M10,-35 L2,-30 L10,-28 Z" fill="#ffeb3b"/>
-      
-      <!-- Horns -->
-      <path d="M-10,-55 L-20,-80 L-5,-60 Z" fill="#212121"/>
-      <path d="M10,-55 L20,-80 L5,-60 Z" fill="#212121"/>
-      
-      <!-- Belly Scales -->
-      <path d="M-10,10 L10,10" stroke="#ffcdd2" stroke-width="2" opacity="0.5"/>
-      <path d="M-12,20 L12,20" stroke="#ffcdd2" stroke-width="2" opacity="0.5"/>
-      <path d="M-14,30 L14,30" stroke="#ffcdd2" stroke-width="2" opacity="0.5"/>
-    </g>
-  `,
-    5: `
-    <!-- Ghost -->
-    <defs>
-      <radialGradient id="ghostGrad" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" style="stop-color:#ffffff" />
-        <stop offset="100%" style="stop-color:#cfd8dc" />
-      </radialGradient>
-    </defs>
-    <g transform="translate(100, 100) scale(2.0)" opacity="0.7">
-      <!-- Body -->
-      <path d="M-25,30 Q-25,-40 0,-40 Q25,-40 25,30 Q15,10 0,30 Q-15,10 -25,30" fill="url(#ghostGrad)" stroke="#90a4ae" stroke-width="1.5"/>
-      
-      <!-- Eyes -->
-      <circle cx="-8" cy="-10" r="3" fill="#37474f"/>
-      <circle cx="8" cy="-10" r="3" fill="#37474f"/>
-      
-      <!-- Mouth -->
-      <circle cx="0" cy="5" r="4" fill="none" stroke="#37474f" stroke-width="1.5"/>
-      
-      <!-- Halo -->
-      <ellipse cx="0" cy="-55" rx="15" ry="3" fill="none" stroke="#ffd700" stroke-width="2"/>
-    </g>
-  `
+    dragon: {
+        1: `
+      <!-- Egg -->
+      <defs>
+        <radialGradient id="eggGrad" cx="30%" cy="30%" r="70%">
+          <stop offset="0%" style="stop-color:#fce4ec" />
+          <stop offset="100%" style="stop-color:#f06292" />
+        </radialGradient>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+      <g transform="translate(100, 100) scale(3)">
+        <ellipse cx="0" cy="0" rx="25" ry="32" fill="url(#eggGrad)" stroke="#880e4f" stroke-width="1.5"/>
+        <path d="M-15,-10 Q-5,0 -15,10" fill="none" stroke="#f8bbd0" stroke-width="2" opacity="0.6"/>
+        <circle cx="10" cy="-15" r="3" fill="white" opacity="0.4"/>
+      </g>
+    `,
+        2: `
+      <!-- Baby Dragon -->
+      <defs>
+        <linearGradient id="babyBody" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#b388ff" /> <!-- Light Purple -->
+          <stop offset="100%" style="stop-color:#651fff" /> <!-- Deep Purple -->
+        </linearGradient>
+      </defs>
+      <g transform="translate(100, 100) scale(2.2)">
+        <!-- Tail -->
+        <path d="M-20,20 Q-40,30 -30,10" fill="none" stroke="#651fff" stroke-width="4" stroke-linecap="round"/>
+        
+        <!-- Body -->
+        <circle cx="0" cy="10" r="20" fill="url(#babyBody)" stroke="#311b92" stroke-width="1.5"/>
+        
+        <!-- Head -->
+        <circle cx="0" cy="-15" r="18" fill="url(#babyBody)" stroke="#311b92" stroke-width="1.5"/>
+        
+        <!-- Eyes -->
+        <circle cx="-6" cy="-15" r="4" fill="white"/>
+        <circle cx="-6" cy="-15" r="1.5" fill="black"/>
+        <circle cx="6" cy="-15" r="4" fill="white"/>
+        <circle cx="6" cy="-15" r="1.5" fill="black"/>
+        
+        <!-- Little Wings -->
+        <path d="M20,10 Q35,-5 20,-10" fill="#b388ff" stroke="#311b92" stroke-width="1"/>
+        <path d="M-20,10 Q-35,-5 -20,-10" fill="#b388ff" stroke="#311b92" stroke-width="1"/>
+        
+        <!-- Horns -->
+        <path d="M-5,-30 L-8,-40 L-2,-32 Z" fill="#ede7f6" stroke="#311b92" stroke-width="1"/>
+        <path d="M5,-30 L8,-40 L2,-32 Z" fill="#ede7f6" stroke="#311b92" stroke-width="1"/>
+      </g>
+    `,
+        3: `
+      <!-- Teen Dragon -->
+      <defs>
+        <linearGradient id="teenBody" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#64ffda" /> <!-- Teal -->
+          <stop offset="100%" style="stop-color:#00bfa5" /> <!-- Darker Teal -->
+        </linearGradient>
+      </defs>
+      <g transform="translate(100, 100) scale(1.8)">
+        <!-- Body -->
+        <path d="M-15,30 Q0,50 15,30 L10,-10 L-10,-10 Z" fill="url(#teenBody)" stroke="#004d40" stroke-width="1.5"/>
+        
+        <!-- Neck -->
+        <path d="M-5,-10 Q0,-30 5,-10" fill="url(#teenBody)" stroke="#004d40" stroke-width="1.5"/>
+        
+        <!-- Head -->
+        <path d="M-12,-35 Q0,-55 12,-35 Q15,-15 0,-10 Q-15,-15 -12,-35 Z" fill="url(#teenBody)" stroke="#004d40" stroke-width="1.5"/>
+        
+        <!-- Eyes (Bored look) -->
+        <path d="M-8,-30 L-2,-30" stroke="black" stroke-width="2"/>
+        <path d="M2,-30 L8,-30" stroke="black" stroke-width="2"/>
+        
+        <!-- Wings -->
+        <path d="M10,0 Q40,-20 50,10 L30,20 Z" fill="#a7ffeb" stroke="#004d40" stroke-width="1.5"/>
+        <path d="M-10,0 Q-40,-20 -50,10 L-30,20 Z" fill="#a7ffeb" stroke="#004d40" stroke-width="1.5"/>
+        
+        <!-- Spikes -->
+        <path d="M0,-55 L-3,-65 L3,-65 Z" fill="#004d40"/>
+        <path d="M0,50 L-3,65 L3,60 Z" fill="#004d40"/>
+      </g>
+    `,
+        4: `
+      <!-- Adult Dragon -->
+      <defs>
+        <linearGradient id="adultBody" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#ff5252" /> <!-- Red -->
+          <stop offset="100%" style="stop-color:#b71c1c" /> <!-- Dark Red -->
+        </linearGradient>
+        <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+          <feOffset dx="2" dy="2" result="offsetblur"/>
+          <feComponentTransfer>
+            <feFuncA type="linear" slope="0.3"/>
+          </feComponentTransfer>
+          <feMerge>
+            <feMergeNode/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+      <g transform="translate(100, 100) scale(1.5)" filter="url(#shadow)">
+        <!-- Tail -->
+        <path d="M-20,40 Q-60,60 -40,10" fill="none" stroke="#b71c1c" stroke-width="6" stroke-linecap="round"/>
+        
+        <!-- Wings (Majestic) -->
+        <path d="M15,0 Q60,-40 90,0 Q70,40 20,20 Z" fill="#ff8a80" stroke="#b71c1c" stroke-width="2"/>
+        <path d="M-15,0 Q-60,-40 -90,0 Q-70,40 -20,20 Z" fill="#ff8a80" stroke="#b71c1c" stroke-width="2"/>
+        
+        <!-- Body -->
+        <path d="M-20,40 Q0,60 20,40 L15,-10 L-15,-10 Z" fill="url(#adultBody)" stroke="#b71c1c" stroke-width="2"/>
+        
+        <!-- Head -->
+        <path d="M-15,-10 Q-20,-50 0,-60 Q20,-50 15,-10 Z" fill="url(#adultBody)" stroke="#b71c1c" stroke-width="2"/>
+        
+        <!-- Eyes (Fierce) -->
+        <path d="M-10,-35 L-2,-30 L-10,-28 Z" fill="#ffeb3b"/>
+        <path d="M10,-35 L2,-30 L10,-28 Z" fill="#ffeb3b"/>
+        
+        <!-- Horns -->
+        <path d="M-10,-55 L-20,-80 L-5,-60 Z" fill="#212121"/>
+        <path d="M10,-55 L20,-80 L5,-60 Z" fill="#212121"/>
+        
+        <!-- Belly Scales -->
+        <path d="M-10,10 L10,10" stroke="#ffcdd2" stroke-width="2" opacity="0.5"/>
+        <path d="M-12,20 L12,20" stroke="#ffcdd2" stroke-width="2" opacity="0.5"/>
+        <path d="M-14,30 L14,30" stroke="#ffcdd2" stroke-width="2" opacity="0.5"/>
+      </g>
+    `,
+        5: `
+      <!-- Ghost -->
+      <defs>
+        <radialGradient id="ghostGrad" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" style="stop-color:#ffffff" />
+          <stop offset="100%" style="stop-color:#cfd8dc" />
+        </radialGradient>
+      </defs>
+      <g transform="translate(100, 100) scale(2.0)" opacity="0.7">
+        <!-- Body -->
+        <path d="M-25,30 Q-25,-40 0,-40 Q25,-40 25,30 Q15,10 0,30 Q-15,10 -25,30" fill="url(#ghostGrad)" stroke="#90a4ae" stroke-width="1.5"/>
+        
+        <!-- Eyes -->
+        <circle cx="-8" cy="-10" r="3" fill="#37474f"/>
+        <circle cx="8" cy="-10" r="3" fill="#37474f"/>
+        
+        <!-- Mouth -->
+        <circle cx="0" cy="5" r="4" fill="none" stroke="#37474f" stroke-width="1.5"/>
+        
+        <!-- Halo -->
+        <ellipse cx="0" cy="-55" rx="15" ry="3" fill="none" stroke="#ffd700" stroke-width="2"/>
+      </g>
+    `
+    },
+    cat: {
+        1: `
+      <!-- Cat Egg (Yarn Ball) -->
+      <defs>
+        <radialGradient id="yarnGrad" cx="30%" cy="30%" r="70%">
+          <stop offset="0%" style="stop-color:#ffccbc" />
+          <stop offset="100%" style="stop-color:#ff5722" />
+        </radialGradient>
+      </defs>
+      <g transform="translate(100, 100) scale(2.5)">
+        <circle cx="0" cy="0" r="25" fill="url(#yarnGrad)" />
+        <path d="M-20,-10 Q0,-25 20,-10" fill="none" stroke="#e64a19" stroke-width="2" opacity="0.6"/>
+        <path d="M-22,0 Q0,15 22,0" fill="none" stroke="#e64a19" stroke-width="2" opacity="0.6"/>
+        <path d="M-15,15 Q0,25 15,15" fill="none" stroke="#e64a19" stroke-width="2" opacity="0.6"/>
+        <path d="M10,-20 Q20,0 10,20" fill="none" stroke="#e64a19" stroke-width="2" opacity="0.6"/>
+        <!-- Loose thread -->
+        <path d="M15,15 Q30,30 40,20" fill="none" stroke="#ff5722" stroke-width="3" stroke-linecap="round"/>
+      </g>
+    `,
+        2: `
+      <!-- Kitten -->
+      <defs>
+        <linearGradient id="catBody" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#fff3e0" /> 
+          <stop offset="100%" style="stop-color:#ffe0b2" /> 
+        </linearGradient>
+      </defs>
+      <g transform="translate(100, 100) scale(2.2)">
+        <!-- Ears -->
+        <path d="M-20,-25 L-5,-15 L-25,-5 Z" fill="#ffe0b2" stroke="#ff9800" stroke-width="1.5"/>
+        <path d="M20,-25 L5,-15 L25,-5 Z" fill="#ffe0b2" stroke="#ff9800" stroke-width="1.5"/>
+        
+        <!-- Head/Body Blob -->
+        <ellipse cx="0" cy="0" rx="25" ry="20" fill="url(#catBody)" stroke="#ff9800" stroke-width="1.5"/>
+        
+        <!-- Eyes -->
+        <circle cx="-10" cy="-5" r="4" fill="#3e2723"/>
+        <circle cx="-10" cy="-6" r="1.5" fill="white"/>
+        <circle cx="10" cy="-5" r="4" fill="#3e2723"/>
+        <circle cx="10" cy="-6" r="1.5" fill="white"/>
+        
+        <!-- Nose/Mouth -->
+        <path d="M-2,2 L0,4 L2,2" fill="#ffab91" stroke="#3e2723" stroke-width="0.5"/>
+        <path d="M0,4 L0,7 M-3,7 Q0,10 3,7" fill="none" stroke="#3e2723" stroke-width="1"/>
+        
+        <!-- Whiskers -->
+        <path d="M-30,-2 L-15,2" stroke="#3e2723" stroke-width="0.5" opacity="0.5"/>
+        <path d="M-30,4 L-15,4" stroke="#3e2723" stroke-width="0.5" opacity="0.5"/>
+        <path d="M30,-2 L15,2" stroke="#3e2723" stroke-width="0.5" opacity="0.5"/>
+        <path d="M30,4 L15,4" stroke="#3e2723" stroke-width="0.5" opacity="0.5"/>
+      </g>
+    `,
+        3: `
+      <!-- Teen Cat -->
+      <g transform="translate(100, 100) scale(1.8)">
+        <!-- Body (Stretching) -->
+        <path d="M-20,10 Q0,30 20,10 L25,-5 Q10,-15 -5,-5 Z" fill="#ffcc80" stroke="#ef6c00" stroke-width="1.5"/>
+        
+        <!-- Head -->
+        <ellipse cx="-15" cy="-10" rx="15" ry="12" fill="#ffe0b2" stroke="#ef6c00" stroke-width="1.5"/>
+        
+        <!-- Ears -->
+        <path d="M-25,-20 L-20,-10 L-28,-8 Z" fill="#ffcc80" stroke="#ef6c00" stroke-width="1"/>
+        <path d="M-5,-20 L-10,-10 L-2,-8 Z" fill="#ffcc80" stroke="#ef6c00" stroke-width="1"/>
+        
+        <!-- Tail (Upright) -->
+        <path d="M25,-5 Q35,-15 35,-25" fill="none" stroke="#ffcc80" stroke-width="4" stroke-linecap="round"/>
+        
+        <!-- Eyes (Winking) -->
+        <path d="M-20,-12 L-14,-12" stroke="#3e2723" stroke-width="1.5"/> <!-- Closed -->
+        <circle cx="-10" cy="-12" r="1.5" fill="#3e2723"/> <!-- Open -->
+      </g>
+    `,
+        4: `
+      <!-- Adult Cat (Bastet Inspired) -->
+      <defs>
+        <linearGradient id="adultCat" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" style="stop-color:#4e342e" /> <!-- Dark Brown -->
+          <stop offset="100%" style="stop-color:#3e2723" /> <!-- Very Dark Brown -->
+        </linearGradient>
+      </defs>
+      <g transform="translate(100, 100) scale(1.6)">
+        <!-- Body (Sitting) -->
+        <path d="M-15,40 L-15,0 Q-10,-20 10,-20 Q30,-20 35,0 L35,40 Z" fill="url(#adultCat)" stroke="#3e2723" stroke-width="1"/>
+        
+        <!-- Chest Patch -->
+        <path d="M-5,0 Q10,10 25,0 L25,30 Q10,40 -5,30 Z" fill="#d7ccc8" opacity="0.3"/>
+        
+        <!-- Head -->
+        <path d="M-5,-45 Q10,-55 25,-45 Q35,-25 10,-20 Q-15,-25 -5,-45 Z" fill="url(#adultCat)" stroke="#3e2723" stroke-width="1"/>
+        
+        <!-- Ears (Tall) -->
+        <path d="M-5,-45 L-5,-65 L5,-48 Z" fill="#4e342e"/>
+        <path d="M25,-45 L25,-65 L15,-48 Z" fill="#4e342e"/>
+        
+        <!-- Gold Necklace -->
+        <path d="M-10,-15 Q10,0 30,-15" fill="none" stroke="#ffd700" stroke-width="3"/>
+        
+        <!-- Eyes (Green) -->
+        <path d="M0,-35 Q5,-40 10,-35 Q5,-30 0,-35" fill="#64dd17"/> 
+        <path d="M20,-35 Q25,-40 30,-35 Q25,-30 20,-35" fill="#64dd17"/>
+      </g>
+    `,
+        5: `
+      <!-- Ghost Cat -->
+      <g transform="translate(100, 100) scale(2.0)" opacity="0.7">
+        <!-- Body -->
+        <path d="M-20,30 Q-20,-30 0,-30 Q20,-30 20,30 Q10,20 0,30 Q-10,20 -20,30" fill="#cfd8dc" stroke="#90a4ae" stroke-width="1.5"/>
+        <!-- Ears -->
+        <path d="M-15,-25 L-5,-10 L-20,-10 Z" fill="#cfd8dc" stroke="#90a4ae" stroke-width="1"/>
+        <path d="M15,-25 L5,-10 L20,-10 Z" fill="#cfd8dc" stroke="#90a4ae" stroke-width="1"/>
+        
+        <!-- Face -->
+        <circle cx="-7" cy="-5" r="2" fill="#455a64"/>
+        <circle cx="7" cy="-5" r="2" fill="#455a64"/>
+        <path d="M-2,2 L0,4 L2,2" stroke="#455a64" fill="none" stroke-width="1"/>
+        
+        <!-- Halo -->
+        <ellipse cx="0" cy="-40" rx="15" ry="3" fill="none" stroke="#ffd700" stroke-width="2"/>
+      </g>
+    `
+    },
+    ghost: {
+        1: `
+      <!-- Wisp (Egg) -->
+      <defs>
+        <radialGradient id="wispGrad" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" style="stop-color:#e1f5fe" />
+          <stop offset="100%" style="stop-color:#81d4fa" />
+        </radialGradient>
+        <filter id="blur">
+           <feGaussianBlur stdDeviation="2"/>
+        </filter>
+      </defs>
+      <g transform="translate(100, 100) scale(2.5)">
+        <circle cx="0" cy="0" r="15" fill="url(#wispGrad)" filter="url(#blur)"/>
+        <circle cx="0" cy="0" r="10" fill="#ffffff" opacity="0.8"/>
+      </g>
+    `,
+        2: `
+      <!-- Baby Ghost -->
+      <g transform="translate(100, 100) scale(2.2)">
+        <path d="M-20,20 Q-20,-30 0,-30 Q20,-30 20,20 Q10,10 0,20 Q-10,10 -20,20" fill="#b3e5fc" stroke="#0277bd" stroke-width="1.5"/>
+        <circle cx="-7" cy="-5" r="2.5" fill="#01579b"/>
+        <circle cx="7" cy="-5" r="2.5" fill="#01579b"/>
+        <circle cx="0" cy="5" r="2" fill="#ff8a80" opacity="0.6"/> <!-- Blush -->
+      </g>
+    `,
+        3: `
+      <!-- Teen Ghost (Hoodie) -->
+      <g transform="translate(100, 100) scale(1.8)">
+        <!-- Hood -->
+        <path d="M-25,30 L-25,-10 Q0,-40 25,-10 L25,30" fill="#37474f" stroke="#263238" stroke-width="2"/>
+        <!-- Face Hole -->
+        <ellipse cx="0" cy="-5" rx="15" ry="18" fill="#000000"/>
+        <!-- Glowing Eyes -->
+        <circle cx="-5" cy="-5" r="3" fill="#00e5ff"/>
+        <circle cx="5" cy="-5" r="3" fill="#00e5ff"/>
+      </g>
+    `,
+        4: `
+      <!-- Adult Ghost (Reaper) -->
+      <defs>
+        <linearGradient id="reaper" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#212121" />
+          <stop offset="100%" style="stop-color:#000000" />
+        </linearGradient>
+      </defs>
+      <g transform="translate(100, 100) scale(1.6)">
+         <!-- Robe -->
+         <path d="M-30,50 L-25,-20 Q0,-60 25,-20 L30,50" fill="url(#reaper)" stroke="#000" stroke-width="2"/>
+         
+         <!-- Scythe -->
+         <path d="M30,50 L30,-30" stroke="#8d6e63" stroke-width="3"/>
+         <path d="M30,-30 Q10,-50 -10,-40" fill="none" stroke="#cfd8dc" stroke-width="4"/>
+         
+         <!-- Face -->
+         <path d="M-15,-20 Q0,0 15,-20" fill="#000" opacity="0.5"/>
+         <circle cx="-5" cy="-10" r="2" fill="#ff1744"/>
+         <circle cx="5" cy="-10" r="2" fill="#ff1744"/>
+      </g>
+    `,
+        5: `
+      <!-- Tombstone (Dead) -->
+      <g transform="translate(100, 100) scale(2.0)">
+         <path d="M-20,40 L-20,0 Q0,-30 20,0 L20,40 Z" fill="#9e9e9e" stroke="#616161" stroke-width="2"/>
+         <text x="0" y="10" text-anchor="middle" font-size="8" font-family="monospace" fill="#424242">R.I.P</text>
+         <path d="M-10,40 L-10,35" stroke="#4caf50" stroke-width="2"/> <!-- Grass -->
+         <path d="M10,40 L10,32" stroke="#4caf50" stroke-width="2"/>
+      </g>
+    `
+    }
 };
+
+
+/***/ }),
+
+/***/ 4585:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.THEMES = void 0;
+exports.getTheme = getTheme;
+exports.THEMES = {
+    dark: {
+        name: 'Dark',
+        background: { start: '#0B1021', end: '#2B32B2' }, // Deep Blue Night
+        card: { overlayStart: 'rgba(255, 255, 255, 0.08)', overlayEnd: 'rgba(255, 255, 255, 0.03)' },
+        text: { title: '#fff', subtitle: '#a0aec0', label: '#718096', value: '#e2e8f0' },
+        accent: '#64b5f6',
+        ring: 'rgba(100, 181, 246, 0.3)',
+        bars: {
+            hp: { start: '#ef5350', end: '#ffcdd2' },
+            xp: { start: '#2196f3', end: '#bbdefb' },
+        },
+        mood: {
+            excited: '#00e676', happy: '#66bb6a', neutral: '#ffee58', sad: '#ffa726', angry: '#ef5350'
+        }
+    },
+    light: {
+        name: 'Light',
+        background: { start: '#ffffff', end: '#ece9e6' },
+        card: { overlayStart: 'rgba(0, 0, 0, 0.02)', overlayEnd: 'rgba(0, 0, 0, 0.05)' },
+        text: { title: '#1a202c', subtitle: '#4a5568', label: '#718096', value: '#2d3748' },
+        accent: '#ff9800',
+        ring: 'rgba(255, 152, 0, 0.3)',
+        bars: {
+            hp: { start: '#ef5350', end: '#ffcdd2' },
+            xp: { start: '#42a5f5', end: '#bbdefb' },
+        },
+        mood: {
+            excited: '#2e7d32', happy: '#558b2f', neutral: '#f9a825', sad: '#ef6c00', angry: '#c62828'
+        }
+    },
+    ocean: {
+        name: 'Ocean',
+        background: { start: '#000000', end: '#0f9b0f' }, // Deep Sea
+        card: { overlayStart: 'rgba(255, 255, 255, 0.1)', overlayEnd: 'rgba(255, 255, 255, 0.05)' },
+        text: { title: '#e0f2f1', subtitle: '#80deea', label: '#4dd0e1', value: '#e0f7fa' },
+        accent: '#18ffff',
+        ring: 'rgba(24, 255, 255, 0.3)',
+        bars: {
+            hp: { start: '#ff6b6b', end: '#ff8e8e' },
+            xp: { start: '#00bcd4', end: '#80deea' }
+        },
+        mood: {
+            excited: '#00e676', happy: '#69f0ae', neutral: '#ffd740', sad: '#ffab40', angry: '#ff5252'
+        }
+    },
+    dracula: {
+        name: 'Dracula',
+        background: { start: '#282a36', end: '#44475a' },
+        card: { overlayStart: 'rgba(255, 255, 255, 0.05)', overlayEnd: 'rgba(255, 255, 255, 0.02)' },
+        text: { title: '#f8f8f2', subtitle: '#6272a4', label: '#bd93f9', value: '#f8f8f2' },
+        accent: '#bd93f9',
+        ring: 'rgba(189, 147, 249, 0.3)',
+        bars: {
+            hp: { start: '#ff5555', end: '#ff6e6e' },
+            xp: { start: '#8be9fd', end: '#a4ffff' },
+        },
+        mood: {
+            excited: '#50fa7b', happy: '#8be9fd', neutral: '#f1fa8c', sad: '#ffb86c', angry: '#ff5555'
+        }
+    }
+};
+function getTheme(name) {
+    return exports.THEMES[name?.toLowerCase() || 'dark'] || exports.THEMES['dark'];
+}
 
 
 /***/ }),
@@ -30639,7 +30932,7 @@ class StateService {
             mood: 'happy',
             moodScore: 5,
             level: 1,
-            lastFed: new Date().toISOString(),
+            lastFed: new Date().toISOString().replace('T', ' ').split('.')[0],
             streak: 0
         };
         const statePath = path.join(assetsDir, STATE_FILE);
@@ -30647,7 +30940,8 @@ class StateService {
             if (fs.existsSync(statePath)) {
                 console.log(`Loading state from ${statePath}`);
                 const content = fs.readFileSync(statePath, 'utf8');
-                return JSON.parse(content);
+                const loadedState = JSON.parse(content);
+                return loadedState;
             }
             else {
                 console.log(`State file ${statePath} not found. Starting fresh.`);
