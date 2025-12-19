@@ -91,7 +91,7 @@
              <!-- Mood Badge -->
              <rect x="0" y="0" width="120" height="32" rx="16" fill="rgba(0,0,0,0.2)" stroke="rgba(24, 255, 255, 0.3)" stroke-width="1"/>
              <text x="60" y="21" text-anchor="middle" class="text-base value" fill="#e0f7fa">
-               😡 ANGRY
+               😢 SAD
              </text>
              
              <!-- Streak Badge -->
@@ -116,10 +116,10 @@
              
              <!-- XP -->
              <g transform="translate(0, 45)">
-               <text x="0" y="0" class="text-base label">XP 1213 / 2000</text>
+               <text x="0" y="0" class="text-base label">XP 1235 / 2000</text>
                <rect x="0" y="10" width="220" height="8" rx="4" fill="rgba(255,255,255,0.1)" />
-               <rect x="0" y="10" width="104.57333333333334" height="8" rx="4" fill="url(#xpLog)" class="bar-anim" />
-               <rect x="0" y="10" width="104.57333333333334" height="8" rx="4" fill="white" opacity="0.1" />
+               <rect x="0" y="10" width="107.8" height="8" rx="4" fill="url(#xpLog)" class="bar-anim" />
+               <rect x="0" y="10" width="107.8" height="8" rx="4" fill="white" opacity="0.1" />
              </g>
            </g>
            
