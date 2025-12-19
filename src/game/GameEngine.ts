@@ -14,6 +14,9 @@ export class GameEngine {
     next.lastFed = now.toISOString().replace('T', ' ').split('.')[0];
     
 
+    // Calculate total contributions BEFORE decay check
+    const totalContributions = contributions.commits + contributions.prsMerged + contributions.issuesClosed;
+
     // 1. Decay (Based on time passed)
     const hoursElapsed = (now.getTime() - lastFed.getTime()) / (1000 * 60 * 60);
     const decayCycles = Math.floor(hoursElapsed / 24);
@@ -21,13 +24,13 @@ export class GameEngine {
     if (decayCycles > 0) {
       next.hp = Math.max(0, next.hp - (10 * decayCycles));
       
-      // Mood decay: -1 "Happy" Level per day
-      next.moodScore = Math.max(1, next.moodScore - decayCycles);
+      // Mood decay: -1 "Happy" Level per day, but ONLY if inactive (no contributions)
+      if (totalContributions === 0) {
+        next.moodScore = Math.max(1, next.moodScore - decayCycles);
+      }
     }
 
     // 2. Recovery / Feeding
-    const totalContributions = contributions.commits + contributions.prsMerged + contributions.issuesClosed;
-
     if (totalContributions > 0) {
       // HP Recovery: +20 HP per Commit
       const hpGain = contributions.commits * 20;
@@ -53,8 +56,9 @@ export class GameEngine {
       }
       next.xp += rawXp;
 
-      // Mood Recovery: +1 per Issue Closed
-      next.moodScore = Math.min(5, next.moodScore + contributions.issuesClosed);
+      // Mood Recovery: +1 for any commits, +1 per PR merged, +1 per issue closed
+      const moodBoost = Math.min(contributions.commits, 1) + contributions.prsMerged + contributions.issuesClosed;
+      next.moodScore = Math.min(5, next.moodScore + moodBoost);
     }
 
     // 3. Evolution
