@@ -84,7 +84,7 @@
         <g transform="translate(30, 30)">
            <!-- Title Block -->
            <text x="0" y="24" class="text-base title">Demo Dragon</text>
-           <text x="0" y="46" class="text-base subtitle">Lvl 3 • Cat</text>
+           <text x="0" y="46" class="text-base subtitle">Lvl 4 • Cat</text>
            
            <!-- Info Badges (Mood & Streak) -->
            <g transform="translate(0, 70)">
@@ -98,7 +98,7 @@
              <g transform="translate(130, 0)">
                 <rect x="0" y="0" width="150" height="32" rx="16" fill="rgba(0,0,0,0.2)" stroke="rgba(24, 255, 255, 0.3)" stroke-width="1"/>
                 <text x="75" y="21" text-anchor="middle" class="text-base value" fill="#e0f7fa">
-                   🔥 38 DAY STREAK
+                   🔥 39 DAY STREAK
                 </text>
              </g>
            </g>
@@ -116,15 +116,15 @@
              
              <!-- XP -->
              <g transform="translate(0, 45)">
-               <text x="0" y="0" class="text-base label">XP 1996 / 2000</text>
+               <text x="0" y="0" class="text-base label">XP 2018 / 5000</text>
                <rect x="0" y="10" width="220" height="8" rx="4" fill="rgba(255,255,255,0.1)" />
-               <rect x="0" y="10" width="219.41333333333333" height="8" rx="4" fill="url(#xpLog)" class="bar-anim" />
-               <rect x="0" y="10" width="219.41333333333333" height="8" rx="4" fill="white" opacity="0.1" />
+               <rect x="0" y="10" width="220" height="8" rx="4" fill="url(#xpLog)" class="bar-anim" />
+               <rect x="0" y="10" width="220" height="8" rx="4" fill="white" opacity="0.1" />
              </g>
            </g>
            
            <!-- Footer -->
-           <text x="0" y="260" class="text-base subtitle" font-size="12">Last fed: 1/2/2026</text>
+           <text x="0" y="260" class="text-base subtitle" font-size="12">Last fed: 1/3/2026</text>
         </g>
 
         <!-- RIGHT SIDE: Pet Spotlight -->
@@ -135,24 +135,33 @@
            <!-- Pet Sprite -->
            <g class="pet-anim">
              
-      <!-- Teen Cat -->
-      <g transform="translate(100, 100) scale(1.8)">
-        <!-- Body (Stretching) -->
-        <path d="M-20,10 Q0,30 20,10 L25,-5 Q10,-15 -5,-5 Z" fill="#ffcc80" stroke="#ef6c00" stroke-width="1.5"/>
+      <!-- Adult Cat (Bastet Inspired) -->
+      <defs>
+        <linearGradient id="adultCat" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" style="stop-color:#4e342e" /> <!-- Dark Brown -->
+          <stop offset="100%" style="stop-color:#3e2723" /> <!-- Very Dark Brown -->
+        </linearGradient>
+      </defs>
+      <g transform="translate(100, 100) scale(1.6)">
+        <!-- Body (Sitting) -->
+        <path d="M-15,40 L-15,0 Q-10,-20 10,-20 Q30,-20 35,0 L35,40 Z" fill="url(#adultCat)" stroke="#3e2723" stroke-width="1"/>
+        
+        <!-- Chest Patch -->
+        <path d="M-5,0 Q10,10 25,0 L25,30 Q10,40 -5,30 Z" fill="#d7ccc8" opacity="0.3"/>
         
         <!-- Head -->
-        <ellipse cx="-15" cy="-10" rx="15" ry="12" fill="#ffe0b2" stroke="#ef6c00" stroke-width="1.5"/>
+        <path d="M-5,-45 Q10,-55 25,-45 Q35,-25 10,-20 Q-15,-25 -5,-45 Z" fill="url(#adultCat)" stroke="#3e2723" stroke-width="1"/>
         
-        <!-- Ears -->
-        <path d="M-25,-20 L-20,-10 L-28,-8 Z" fill="#ffcc80" stroke="#ef6c00" stroke-width="1"/>
-        <path d="M-5,-20 L-10,-10 L-2,-8 Z" fill="#ffcc80" stroke="#ef6c00" stroke-width="1"/>
+        <!-- Ears (Tall) -->
+        <path d="M-5,-45 L-5,-65 L5,-48 Z" fill="#4e342e"/>
+        <path d="M25,-45 L25,-65 L15,-48 Z" fill="#4e342e"/>
         
-        <!-- Tail (Upright) -->
-        <path d="M25,-5 Q35,-15 35,-25" fill="none" stroke="#ffcc80" stroke-width="4" stroke-linecap="round"/>
+        <!-- Gold Necklace -->
+        <path d="M-10,-15 Q10,0 30,-15" fill="none" stroke="#ffd700" stroke-width="3"/>
         
-        <!-- Eyes (Winking) -->
-        <path d="M-20,-12 L-14,-12" stroke="#3e2723" stroke-width="1.5"/> <!-- Closed -->
-        <circle cx="-10" cy="-12" r="1.5" fill="#3e2723"/> <!-- Open -->
+        <!-- Eyes (Green) -->
+        <path d="M0,-35 Q5,-40 10,-35 Q5,-30 0,-35" fill="#64dd17"/> 
+        <path d="M20,-35 Q25,-40 30,-35 Q25,-30 20,-35" fill="#64dd17"/>
       </g>
     
            </g>
