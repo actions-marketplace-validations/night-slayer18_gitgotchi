@@ -91,14 +91,14 @@
              <!-- Mood Badge -->
              <rect x="0" y="0" width="120" height="32" rx="16" fill="rgba(0,0,0,0.2)" stroke="rgba(24, 255, 255, 0.3)" stroke-width="1"/>
              <text x="60" y="21" text-anchor="middle" class="text-base value" fill="#e0f7fa">
-               😊 HAPPY
+               🤩 EXCITED
              </text>
              
              <!-- Streak Badge -->
              <g transform="translate(130, 0)">
                 <rect x="0" y="0" width="150" height="32" rx="16" fill="rgba(0,0,0,0.2)" stroke="rgba(24, 255, 255, 0.3)" stroke-width="1"/>
                 <text x="75" y="21" text-anchor="middle" class="text-base value" fill="#e0f7fa">
-                   🔥 46 DAY STREAK
+                   🔥 47 DAY STREAK
                 </text>
              </g>
            </g>
@@ -107,16 +107,16 @@
            <g transform="translate(0, 130)">
              <!-- HP -->
              <g>
-               <text x="0" y="0" class="text-base label">Health 90%</text>
+               <text x="0" y="0" class="text-base label">Health 100%</text>
                <rect x="0" y="10" width="220" height="8" rx="4" fill="rgba(255,255,255,0.1)" />
-               <rect x="0" y="10" width="198" height="8" rx="4" fill="url(#hpLog)" class="bar-anim" />
+               <rect x="0" y="10" width="220" height="8" rx="4" fill="url(#hpLog)" class="bar-anim" />
                <!-- Shine/Glow on Bar -->
-               <rect x="0" y="10" width="198" height="8" rx="4" fill="white" opacity="0.1" />
+               <rect x="0" y="10" width="220" height="8" rx="4" fill="white" opacity="0.1" />
              </g>
              
              <!-- XP -->
              <g transform="translate(0, 45)">
-               <text x="0" y="0" class="text-base label">XP 2429 / 5000</text>
+               <text x="0" y="0" class="text-base label">XP 2504 / 5000</text>
                <rect x="0" y="10" width="220" height="8" rx="4" fill="rgba(255,255,255,0.1)" />
                <rect x="0" y="10" width="220" height="8" rx="4" fill="url(#xpLog)" class="bar-anim" />
                <rect x="0" y="10" width="220" height="8" rx="4" fill="white" opacity="0.1" />
