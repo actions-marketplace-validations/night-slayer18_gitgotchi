@@ -1,6 +1,6 @@
 {
   "name": "gitgotchi",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -25,6 +25,8 @@
     "typescript": "^5.9.3"
   },
   "overrides": {
-    "glob": "^10.4.5"
+    "glob": "^10.4.5",
+    "minimatch": "^9.0.7",
+    "undici": "^6.24.1"
   }
 }
